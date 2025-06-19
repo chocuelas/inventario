@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -26,34 +25,41 @@
   </div>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwcYJoCcaZ6_igQQxTZf88lzHw7o3V1l2jTucOh1PjxJVHLWWIwMD_nZXPyW_jifIv_/exec";
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwcYJoCcaZ6_igQQxTZf88lzHw7o3V1l2jTucOh1PjxJVHLWWIwMD_nZXPyW_jifIv_/exec";
+    const POST_URL = "https://script.google.com/macros/s/AKfycbwcYJoCcaZ6_igQQxTZf88lzHw7o3V1l2jTucOh1PjxJVHLWWIwMD_nZXPyW_jifIv_/exec";
 
-    const items = [
-      { nombre: "Queso campesino", medida: "bloque" },
-      { nombre: "Choclo molido", medida: "kg" },
-      { nombre: "Leche", medida: "litro" },
-      { nombre: "Arepas precocidas", medida: "unidad" }
-    ];
-
-    document.addEventListener("DOMContentLoaded", () => {
-      // Fecha automática
+    document.addEventListener("DOMContentLoaded", async () => {
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("fecha").value = today;
 
+      let config;
+      try {
+        const res = await fetch(CONFIG_URL);
+        config = await res.json();
+      } catch (e) {
+        document.getElementById("respuesta").textContent = "Error cargando configuración.";
+        return;
+      }
+
       const contenedor = document.getElementById("acordeones");
 
-      items.forEach((item, i) => {
+      config.forEach((item, i) => {
         const id = i;
+        const nombre = item["Ítem"];
+        const medida = item["Medida"];
+        const minimo = parseFloat(item["Stock Mínimo"]) || 0;
+
         const html = `
         <details class="border rounded mb-4">
-          <summary class="cursor-pointer font-semibold px-4 py-2 bg-gray-200">${item.nombre}</summary>
+          <summary class="cursor-pointer font-semibold px-4 py-2 bg-gray-200">${nombre}</summary>
           <div class="p-4 space-y-4 bg-gray-50">
-            <input type="hidden" name="item" value="${item.nombre}" />
-            <input type="hidden" name="medida" value="${item.medida}" />
+            <input type="hidden" name="item" value="${nombre}" />
+            <input type="hidden" name="medida" value="${medida}" />
+            <input type="hidden" name="minimo" data-id="${id}" value="${minimo}" />
 
             <div>
               <label class="block font-medium">Medida</label>
-              <input type="text" value="${item.medida}" disabled class="w-full border rounded p-2 bg-gray-100" />
+              <input type="text" value="${medida}" disabled class="w-full border rounded p-2 bg-gray-100" />
             </div>
 
             <div>
@@ -91,48 +97,56 @@
         contenedor.insertAdjacentHTML("beforeend", html);
       });
 
-      // Calcular automáticamente
-      const minimo = 2;
+      // Cálculos automáticos
       const calcular = (id) => {
-        const ini = parseFloat(document.querySelector(\`.stock-inicial[data-id="\${id}"]\`).value) || 0;
-        const usado = parseFloat(document.querySelector(\`.usado-cocina[data-id="\${id}"]\`).value) || 0;
-        const desp = parseFloat(document.querySelector(\`.despachado[data-id="\${id}"]\`).value) || 0;
+        const ini = parseFloat(document.querySelector(`.stock-inicial[data-id="${id}"]`).value) || 0;
+        const usado = parseFloat(document.querySelector(`.usado-cocina[data-id="${id}"]`).value) || 0;
+        const desp = parseFloat(document.querySelector(`.despachado[data-id="${id}"]`).value) || 0;
+        const minimo = parseFloat(document.querySelector(`input[name='minimo'][data-id="${id}"]`).value) || 0;
+
         const final = ini - usado - desp;
         const sobro = final - minimo;
 
-        document.querySelector(\`.stock-final[data-id="\${id}"]\`).value = final;
-        document.querySelector(\`.sobro[data-id="\${id}"]\`).value = sobro;
+        const campoFinal = document.querySelector(`.stock-final[data-id="${id}"]`);
+        const campoSobro = document.querySelector(`.sobro[data-id="${id}"]`);
+
+        campoFinal.value = final;
+        campoSobro.value = sobro;
+
+        campoFinal.classList.remove("text-red-600");
+        if (final < minimo) {
+          campoFinal.classList.add("text-red-600");
+        }
       };
 
-      document.querySelectorAll(".stock-inicial, .usado-cocina, .despachado").forEach(input => {
-        input.addEventListener("input", () => {
-          const id = input.dataset.id;
-          calcular(id);
-        });
+      document.addEventListener("input", (e) => {
+        if (e.target.matches(".stock-inicial, .usado-cocina, .despachado")) {
+          calcular(e.target.dataset.id);
+        }
       });
 
-      // Enviar datos
+      // Envío de datos
       document.getElementById("guardarBtn").addEventListener("click", async () => {
         const fecha = document.getElementById("fecha").value;
         const respuesta = document.getElementById("respuesta");
         respuesta.textContent = "";
 
-        const registros = items.map((item, i) => {
+        const registros = config.map((item, i) => {
           return {
             fecha,
-            item: item.nombre,
-            medida: item.medida,
-            stockInicial: document.querySelector(\`input[name='stockInicial'][data-id="\${i}"]\`).value,
-            usadoCocina: document.querySelector(\`input[name='usadoCocina'][data-id="\${i}"]\`).value,
-            despachadoPunto: document.querySelector(\`input[name='despachadoPunto'][data-id="\${i}"]\`).value,
-            stockFinal: document.querySelector(\`input[name='stockFinal'][data-id="\${i}"]\`).value,
-            sobro: document.querySelector(\`input[name='sobro'][data-id="\${i}"]\`).value,
-            observaciones: document.querySelector(\`textarea[name='observaciones'][data-id="\${i}"]\`).value
+            item: item["Ítem"],
+            medida: item["Medida"],
+            stockInicial: document.querySelector(`input[name='stockInicial'][data-id="${i}"]`).value,
+            usadoCocina: document.querySelector(`input[name='usadoCocina'][data-id="${i}"]`).value,
+            despachadoPunto: document.querySelector(`input[name='despachadoPunto'][data-id="${i}"]`).value,
+            stockFinal: document.querySelector(`input[name='stockFinal'][data-id="${i}"]`).value,
+            sobro: document.querySelector(`input[name='sobro'][data-id="${i}"]`).value,
+            observaciones: document.querySelector(`textarea[name='observaciones'][data-id="${i}"]`).value
           };
         });
 
         try {
-          const response = await fetch(WEB_APP_URL, {
+          const response = await fetch(POST_URL, {
             method: "POST",
             body: JSON.stringify({ registros }),
             headers: { "Content-Type": "application/json" }
