@@ -1,12 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const scriptURL = "https://script.google.com/macros/s/AKfycby_ltjdHgfAaIirgF7piZ9bys2A85wJwfZhQFGvFiqj0ts6sQrS2ev5Lh8J2ueBPRZ6/exec";
   const fechaInput = document.getElementById("fecha");
   const hoy = new Date().toISOString().split("T")[0];
   fechaInput.value = hoy;
 
-  // Cargar configuración
-  fetch(`${scriptURL}?action=getConfiguracion`)
-    .then(res => res.json())
+ fetch('https://script.google.com/macros/s/AKfycby_ltjdHgfAaIirgF7piZ9bys2A85wJwfZhQFGvFiqj0ts6sQrS2ev5Lh8J2ueBPRZ6/exec?func=getConfiguracion')
+    .then(r => r.json())
     .then(configs => {
       const container = document.getElementById("itemsContainer");
 
@@ -89,9 +87,10 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(card);
       });
     })
-    .catch(err => alert("❌ Error cargando configuración: " + err.message));
+    .catch(err => {
+      alert("❌ Error cargando configuración: " + err.message);
+    });
 
-  // Guardar datos
   document.getElementById("inventarioForm").addEventListener("submit", function (e) {
     e.preventDefault();
     document.getElementById("loaderModal").style.display = "flex";
@@ -109,26 +108,25 @@ document.addEventListener("DOMContentLoaded", function () {
         despachado: inputs.namedItem("despachado").value,
         stockFinal: inputs.namedItem("stockFinal").value,
         observaciones: inputs.namedItem("observaciones").value,
-        fecha: fechaInput.value
       };
       items.push(data);
     });
 
-    fetch(scriptURL, {
-      method: "POST",
+    fetch('URL_DE_TU_SCRIPT_WEB_APPS/guardarInventario', {
+      method: 'POST',
       body: JSON.stringify(items),
       headers: {
-        "Content-Type": "application/json"
+        'Content-Type': 'application/json'
       }
     })
-      .then(res => res.text())
-      .then(msg => {
-        alert("✅ Guardado exitosamente");
-        document.getElementById("loaderModal").style.display = "none";
-      })
-      .catch(err => {
-        alert("❌ Error al guardar: " + err.message);
-        document.getElementById("loaderModal").style.display = "none";
-      });
+    .then(r => r.text())
+    .then(msg => {
+      alert(msg);
+      document.getElementById("loaderModal").style.display = "none";
+    })
+    .catch(err => {
+      alert("Error: " + err.message);
+      document.getElementById("loaderModal").style.display = "none";
+    });
   });
 });
