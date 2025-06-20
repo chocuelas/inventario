@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const hoy = new Date().toISOString().split("T")[0];
   fechaInput.value = hoy;
 
- fetch('https://script.google.com/macros/s/AKfycby_ltjdHgfAaIirgF7piZ9bys2A85wJwfZhQFGvFiqj0ts6sQrS2ev5Lh8J2ueBPRZ6/exec?func=getConfiguracion')
+ fetch('https://script.google.com/macros/s/AKfycbyTOpTDYB04hqV3tsvCa46rte6F3gUEXTsfgEeceAKrw34nn-vQ8yUVEFGvRo46QYq9/exec?func=getConfiguracion')
     .then(r => r.json())
     .then(configs => {
       const container = document.getElementById("itemsContainer");
