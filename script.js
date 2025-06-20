@@ -1,13 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const scriptURL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_URL/exec";
   const fechaInput = document.getElementById("fecha");
   const hoy = new Date().toISOString().split("T")[0];
   fechaInput.value = hoy;
 
-  google.script.run
-    .withSuccessHandler(function (configs) {
+  // Cargar configuración
+  fetch(`${scriptURL}?action=getConfiguracion`)
+    .then(res => res.json())
+    .then(configs => {
       const container = document.getElementById("itemsContainer");
 
-      configs.forEach((config) => {
+      configs.forEach(config => {
         const card = document.createElement("details");
         card.className = "item-card";
 
@@ -23,10 +26,10 @@ document.addEventListener("DOMContentLoaded", function () {
           { label: "Stock Inicial Cocina", name: "stockInicial" },
           { label: "Usado en Cocina", name: "usadoCocina" },
           { label: "Despachado al Punto", name: "despachado" },
-          { label: "Observaciones", name: "observaciones" },
+          { label: "Observaciones", name: "observaciones" }
         ];
 
-        campos.forEach((c) => {
+        campos.forEach(c => {
           const div = document.createElement("div");
           const label = document.createElement("label");
           label.textContent = c.label;
@@ -61,7 +64,7 @@ document.addEventListener("DOMContentLoaded", function () {
         content.appendChild(alerta);
 
         const inputs = content.querySelectorAll("input");
-        inputs.forEach((input) => {
+        inputs.forEach(input => {
           input.addEventListener("input", () => {
             const inicial = Number(content.querySelector("input[name='stockInicial']").value) || 0;
             const usado = Number(content.querySelector("input[name='usadoCocina']").value) || 0;
@@ -86,17 +89,15 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(card);
       });
     })
-    .withFailureHandler(function (err) {
-      alert("❌ Error cargando configuración: " + err.message);
-    })
-    .getConfiguracion();
+    .catch(err => alert("❌ Error cargando configuración: " + err.message));
 
+  // Guardar datos
   document.getElementById("inventarioForm").addEventListener("submit", function (e) {
     e.preventDefault();
     document.getElementById("loaderModal").style.display = "flex";
 
     const items = [];
-    document.querySelectorAll(".item-card").forEach((card) => {
+    document.querySelectorAll(".item-card").forEach(card => {
       const item = card.querySelector("summary").textContent;
       const inputs = card.querySelectorAll("input");
 
@@ -108,19 +109,26 @@ document.addEventListener("DOMContentLoaded", function () {
         despachado: inputs.namedItem("despachado").value,
         stockFinal: inputs.namedItem("stockFinal").value,
         observaciones: inputs.namedItem("observaciones").value,
+        fecha: fechaInput.value
       };
       items.push(data);
     });
 
-    google.script.run
-      .withSuccessHandler(function (res) {
-        alert(res);
+    fetch(scriptURL, {
+      method: "POST",
+      body: JSON.stringify(items),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+      .then(res => res.text())
+      .then(msg => {
+        alert("✅ Guardado exitosamente");
         document.getElementById("loaderModal").style.display = "none";
       })
-      .withFailureHandler(function (err) {
-        alert("Error: " + err.message);
+      .catch(err => {
+        alert("❌ Error al guardar: " + err.message);
         document.getElementById("loaderModal").style.display = "none";
-      })
-      .guardarInventario(items);
+      });
   });
 });
