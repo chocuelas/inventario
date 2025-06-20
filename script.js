@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const scriptURL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_URL/exec";
+  const scriptURL = "https://script.google.com/macros/s/AKfycby_ltjdHgfAaIirgF7piZ9bys2A85wJwfZhQFGvFiqj0ts6sQrS2ev5Lh8J2ueBPRZ6/exec";
   const fechaInput = document.getElementById("fecha");
   const hoy = new Date().toISOString().split("T")[0];
   fechaInput.value = hoy;
