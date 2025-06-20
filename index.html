@@ -4,165 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Inventario Diario</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body class="bg-gray-100 p-6">
-  <div class="max-w-4xl mx-auto bg-white shadow-md rounded-xl p-6">
-    <h1 class="text-2xl font-bold mb-6">Formulario de Inventario</h1>
+<body>
+  <h1>Inventario Diario</h1>
 
-    <div class="mb-6">
-      <label for="fecha" class="block font-medium mb-1">Fecha</label>
-      <input type="date" id="fecha" readonly class="w-full border rounded p-2 bg-gray-100" />
+  <form id="inventarioForm">
+    <label for="fecha">Fecha:</label>
+    <input type="date" id="fecha" name="fecha" readonly />
+    <div id="itemsContainer"></div>
+    <button type="submit">Guardar Todo</button>
+  </form>
+
+  <div id="loaderModal">
+    <div class="modal-content">
+      <div class="spinner"></div>
+      <p>Guardando...</p>
     </div>
-
-    <div id="acordeones"></div>
-
-    <button id="guardarBtn" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-      Guardar Todo
-    </button>
-
-    <p id="respuesta" class="mt-4 text-green-600 font-medium"></p>
   </div>
 
-  <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzs8BP3EyBHdEBLY65kOFG4CqVSw8nrYWwEWVB3iozZidFZ0KfBZuSXBRgnoFrKNZw8Gw/exec";
-    const POST_URL = "https://script.google.com/macros/s/AKfycbzs8BP3EyBHdEBLY65kOFG4CqVSw8nrYWwEWVB3iozZidFZ0KfBZuSXBRgnoFrKNZw8Gw/exec";
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const today = new Date().toISOString().split("T")[0];
-      document.getElementById("fecha").value = today;
-
-      let config;
-      try {
-        const res = await fetch(CONFIG_URL);
-        config = await res.json();
-      } catch (e) {
-        document.getElementById("respuesta").textContent = "Error cargando configuración.";
-        return;
-      }
-
-      const contenedor = document.getElementById("acordeones");
-
-      config.forEach((item, i) => {
-        const id = i;
-        const nombre = item["Ítem"];
-        const medida = item["Medida"];
-        const minimo = parseFloat(item["Stock Mínimo"]) || 0;
-
-        const html = `
-        <details class="border rounded mb-4">
-          <summary class="cursor-pointer font-semibold px-4 py-2 bg-gray-200">${nombre}</summary>
-          <div class="p-4 space-y-4 bg-gray-50">
-            <input type="hidden" name="item" value="${nombre}" />
-            <input type="hidden" name="medida" value="${medida}" />
-            <input type="hidden" name="minimo" data-id="${id}" value="${minimo}" />
-
-            <div>
-              <label class="block font-medium">Medida</label>
-              <input type="text" value="${medida}" disabled class="w-full border rounded p-2 bg-gray-100" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Stock Inicial Cocina</label>
-              <input type="number" name="stockInicial" data-id="${id}" class="w-full border rounded p-2 stock-inicial" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Usado en Cocina</label>
-              <input type="number" name="usadoCocina" data-id="${id}" class="w-full border rounded p-2 usado-cocina" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Despachado al Punto</label>
-              <input type="number" name="despachadoPunto" data-id="${id}" class="w-full border rounded p-2 despachado" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Stock Final</label>
-              <input type="number" name="stockFinal" data-id="${id}" readonly class="w-full border rounded p-2 bg-gray-100 stock-final" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Sobro</label>
-              <input type="number" name="sobro" data-id="${id}" readonly class="w-full border rounded p-2 bg-gray-100 sobro" />
-            </div>
-
-            <div>
-              <label class="block font-medium">Observaciones</label>
-              <textarea name="observaciones" data-id="${id}" class="w-full border rounded p-2"></textarea>
-            </div>
-          </div>
-        </details>
-        `;
-        contenedor.insertAdjacentHTML("beforeend", html);
-      });
-
-      // Cálculos automáticos
-      const calcular = (id) => {
-        const ini = parseFloat(document.querySelector(`.stock-inicial[data-id="${id}"]`).value) || 0;
-        const usado = parseFloat(document.querySelector(`.usado-cocina[data-id="${id}"]`).value) || 0;
-        const desp = parseFloat(document.querySelector(`.despachado[data-id="${id}"]`).value) || 0;
-        const minimo = parseFloat(document.querySelector(`input[name='minimo'][data-id="${id}"]`).value) || 0;
-
-        const final = ini - usado - desp;
-        const sobro = final - minimo;
-
-        const campoFinal = document.querySelector(`.stock-final[data-id="${id}"]`);
-        const campoSobro = document.querySelector(`.sobro[data-id="${id}"]`);
-
-        campoFinal.value = final;
-        campoSobro.value = sobro;
-
-        campoFinal.classList.remove("text-red-600");
-        if (final < minimo) {
-          campoFinal.classList.add("text-red-600");
-        }
-      };
-
-      document.addEventListener("input", (e) => {
-        if (e.target.matches(".stock-inicial, .usado-cocina, .despachado")) {
-          calcular(e.target.dataset.id);
-        }
-      });
-
-      // Envío de datos
-      document.getElementById("guardarBtn").addEventListener("click", async () => {
-        const fecha = document.getElementById("fecha").value;
-        const respuesta = document.getElementById("respuesta");
-        respuesta.textContent = "";
-
-        const registros = config.map((item, i) => {
-          return {
-            fecha,
-            item: item["Ítem"],
-            medida: item["Medida"],
-            stockInicial: document.querySelector(`input[name='stockInicial'][data-id="${i}"]`).value,
-            usadoCocina: document.querySelector(`input[name='usadoCocina'][data-id="${i}"]`).value,
-            despachadoPunto: document.querySelector(`input[name='despachadoPunto'][data-id="${i}"]`).value,
-            stockFinal: document.querySelector(`input[name='stockFinal'][data-id="${i}"]`).value,
-            sobro: document.querySelector(`input[name='sobro'][data-id="${i}"]`).value,
-            observaciones: document.querySelector(`textarea[name='observaciones'][data-id="${i}"]`).value
-          };
-        });
-
-        try {
-          const response = await fetch(POST_URL, {
-            method: "POST",
-            body: JSON.stringify({ registros }),
-            headers: { "Content-Type": "application/json" }
-          });
-
-          if (response.ok) {
-            respuesta.textContent = "Inventario enviado correctamente.";
-          } else {
-            respuesta.textContent = "Error al enviar los datos.";
-          }
-        } catch (err) {
-          console.error(err);
-          respuesta.textContent = "Fallo en la conexión con el servidor.";
-        }
-      });
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
